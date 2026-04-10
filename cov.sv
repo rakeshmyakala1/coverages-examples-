@@ -474,3 +474,47 @@ endmodule
 
 
  
+
+//15) cover AWVALID and AWREADY handshake combinations // Example objective
+
+class awvalid_ready_cov; // Separate class for AW channel valid/ready coverage
+  rand bit awvalid; // Randomized variable used for coverage sampling
+  rand bit awready; // Randomized variable used for coverage sampling
+
+  covergroup aw_cov; // Covergroup declaration
+    cp_awvalid: coverpoint awvalid { // Coverpoint definition
+      bins low = {0}; // Coverage bin definition
+      bins high = {1}; // Coverage bin definition
+    }
+
+    cp_awready: coverpoint awready { // Coverpoint definition
+      bins low = {0}; // Coverage bin definition
+      bins high = {1}; // Coverage bin definition
+    }
+
+    cp_aw_handshake: coverpoint {awvalid, awready} { // Coverpoint definition
+      bins idle       = {2'b00}; // No transfer intent and no accept
+      bins valid_wait = {2'b10}; // Master waiting for slave ready
+      bins ready_wait = {2'b01}; // Slave ready while master is not valid
+      bins transfer   = {2'b11}; // Valid handshake (transfer happens)
+    }
+
+    cp_awvalid_awready: cross cp_awvalid, cp_awready; // Cross coverage between coverpoints
+  endgroup
+
+  function new();
+    aw_cov = new(); // Instantiate covergroup inside constructor
+  endfunction
+endclass
+
+module awvalid_ready_tb;
+  awvalid_ready_cov pkt = new();
+
+  initial begin
+    repeat (100) begin
+      void'(pkt.randomize()); // Randomize awvalid and awready
+      pkt.aw_cov.sample(); // Sample coverage
+    end
+    $display("AWVALID/AWREADY Coverage = %0.2f%%", pkt.aw_cov.get_coverage());
+  end
+endmodule
